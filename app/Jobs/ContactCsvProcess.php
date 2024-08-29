@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Contact;
+use App\Models\Term;
+use App\Models\TermTaxonomy;
 use App\Models\UploadSummary;
 use Throwable;
 use Illuminate\Bus\Batchable;
@@ -11,6 +13,14 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+// DELETE FROM `qwcheq_options` WHERE option_name like "%_houzez_property_country%";
+// DELETE FROM `qwcheq_options` WHERE option_name like "%_houzez_property_state%";
+// DELETE FROM `qwcheq_options` WHERE option_name like "%_houzez_property_city%";
+// DELETE FROM `qwcheq_options` WHERE option_name like "%_houzez_property_area%"
 
 class ContactCsvProcess implements ShouldQueue
 {
@@ -46,61 +56,150 @@ class ContactCsvProcess implements ShouldQueue
 
             $total_data++;
 
-            $name = $contact[0];
-            $email = $contact[1];
-            $phone = $contact[2];
-            $gender = $contact[3];
-            $address = $contact[4];
+            $area_name = $contact[0];
+            $city_name = $contact[1];
+            $state_name = $contact[2];
+            $country_name = $contact[3];
 
             // check if all fields are present
-            if(!$name || !$email || !$phone || !$gender || !$address){
+            if(!$area_name || !$city_name || !$state_name || !$country_name){
                 $total_incomplete++;
                 continue;
             }
 
-            // phone validation
-            $pattern = "/^(?:\+88|88)?(01[3-9]\d{8})$/";
-            if(!preg_match($pattern, $phone)){
-                $total_invalid++;
-                continue;
-            }
+            $area_name = trim($area_name);
+            $city_name = trim($city_name);
+            $state_name = trim($state_name);
+            $country_name = trim($country_name);
 
-            // phone unique check
-            $phone_exists = Contact::where("phone_number", $phone)->first();
-            if($phone_exists){
-                $total_duplicate++;
-                continue;
-            }
 
-            // email validation
-            if(!filter_var($email, FILTER_VALIDATE_EMAIL)){
-                $total_invalid++;
-                continue;
-            }
-            else{
-                list($username, $domain) = explode('@', $email);
-                if (!checkdnsrr($domain, 'MX')) {
-                    $total_invalid++;
-                    continue;
-                }
-            }
+            // check country
+            $country = Term::where("name", $country_name)->first();
+            $country_taxonomy = TermTaxonomy::where('term_id', $country?->term_id)->first();
 
-            // email unique check
-            $email_exists = Contact::where("email", $email)->first();
-            if($email_exists) {
-                $total_duplicate++;
-                continue;
+            if(!$country){
+                $country = Term::create([
+                    "name" => $country_name,
+                    "slug" => Str::slug($country_name),
+                    "term_group" => 0,
+                ]);
+
+                $country_taxonomy = TermTaxonomy::create([
+                    "term_id" => $country->term_id,
+                    "taxonomy" => "property_country",
+                    "description" => "",
+                    "parent" => 0,
+                    "count" => 0,
+                ]);
             }
 
 
+            $state = Term::where("name", $state_name)->first();
+            $state_taxonomy = TermTaxonomy::where('term_id', $state?->term_id)->first();
 
-            Contact::create([
-                "name" => $name,
-                "email" => $email,
-                "phone_number" => $phone,
-                "gender" => $gender,
-                "address" => $address,
-            ]);
+            if($state && $state_taxonomy && $country->term_id == $state->parent){
+                $state = false;
+            }
+
+            if(!$state){
+                $state = Term::create([
+                    "name" => $state_name,
+                    "slug" => Str::slug($state_name),
+                    "term_group" => 0,
+                ]);
+
+                $state_taxonomy = TermTaxonomy::create([
+                    "term_id" => $state->term_id,
+                    "taxonomy" => "property_state",
+                    "description" => "",
+                    "parent" => $country->term_id ?? 0,
+                    "count" => 0,
+                ]);
+
+                // $option = '_houzez_property_state_' . $state->term_id;
+                // $parent_key = "parent_country";
+                // $parent_value = $country->slug;
+
+                // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
+                //     'option' => $option,
+                //     'parent_key' => $parent_key,
+                //     'parent_value' => $parent_value,
+                // ]);
+
+                // Log::info($response->body());
+            }
+
+            $city = Term::where("name", $city_name)->first();
+            $city_taxonomy = TermTaxonomy::where('term_id', $city?->term_id)->first();
+
+            if($city && $city_taxonomy && $state->term_id == $city->parent){
+                $city = false;
+            }
+
+            if(!$city){
+                $city = Term::create([
+                    "name" => $city_name,
+                    "slug" => Str::slug($city_name),
+                    "term_group" => 0,
+                ]);
+
+                $city_taxonomy = TermTaxonomy::create([
+                    "term_id" => $city->term_id,
+                    "taxonomy" => "property_city",
+                    "description" => "",
+                    "parent" => $state->term_id ?? 0,
+                    "count" => 0,
+                ]);
+
+                // $option = '_houzez_property_city_' . $city->term_id;
+                // $parent_key = "parent_state";
+                // $parent_value = $state->slug;
+
+                // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
+                //     'option' => $option,
+                //     'parent_key' => $parent_key,
+                //     'parent_value' => $parent_value,
+                // ]);
+
+                // Log::info($response->body());
+            }
+
+
+            $area = Term::where("name", $area_name)->first();
+            $area_taxonomy = TermTaxonomy::where('term_id', $area?->term_id)->first();
+
+            if($area && $area_taxonomy && $city->term_id == $area->parent){
+                $area = false;
+            }
+
+            if(!$area){
+                $area = Term::create([
+                    "name" => $area_name,
+                    "slug" => Str::slug($area_name),
+                    "term_group" => 0,
+                ]);
+
+                $area_taxonomy = TermTaxonomy::create([
+                    "term_id" => $area->term_id,
+                    "taxonomy" => "property_area",
+                    "description" => "",
+                    "parent" => $area->term_id ?? 0,
+                    "count" => 0,
+                ]);
+
+                // $option = '_houzez_property_area_' . $area->term_id;
+                // $parent_key = "parent_city";
+                // $parent_value = $city->slug;
+
+                // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
+                //     'option' => $option,
+                //     'parent_key' => $parent_key,
+                //     'parent_value' => $parent_value,
+                // ]);
+
+                // Log::info($response->body());
+
+            }
 
             $total_successful++;
         }
