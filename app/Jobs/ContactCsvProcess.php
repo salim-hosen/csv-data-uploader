@@ -2,7 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Models\Area;
+use App\Models\City;
 use App\Models\Contact;
+use App\Models\Country;
+use App\Models\State;
 use App\Models\Term;
 use App\Models\TermTaxonomy;
 use App\Models\UploadSummary;
@@ -72,134 +76,171 @@ class ContactCsvProcess implements ShouldQueue
             $state_name = trim($state_name);
             $country_name = trim($country_name);
 
-
-            // check country
-            $country = Term::where("name", $country_name)->first();
-            $country_taxonomy = TermTaxonomy::where('term_id', $country?->term_id)->first();
-
+            $country = Country::where('name', $country_name)->first();
             if(!$country){
-                $country = Term::create([
-                    "name" => $country_name,
-                    "slug" => Str::slug($country_name),
-                    "term_group" => 0,
-                ]);
-
-                $country_taxonomy = TermTaxonomy::create([
-                    "term_id" => $country->term_id,
-                    "taxonomy" => "property_country",
-                    "description" => "",
-                    "parent" => 0,
-                    "count" => 0,
-                ]);
+                $country = new Country();
+                $country->name = $country_name;
+                $country->save();
             }
 
+            // state = dhaka city = konabari
+            // state = rajshahi  city = konabari
 
-            $state = Term::where("name", $state_name)->first();
-            $state_taxonomy = TermTaxonomy::where('term_id', $state?->term_id)->first();
-
-            if($state && $state_taxonomy && $country->term_id == $state->parent){
-                $state = false;
-            }
-
+            $state = State::where('name', $state_name)->first();
             if(!$state){
-                $state = Term::create([
-                    "name" => $state_name,
-                    "slug" => Str::slug($state_name),
-                    "term_group" => 0,
-                ]);
-
-                $state_taxonomy = TermTaxonomy::create([
-                    "term_id" => $state->term_id,
-                    "taxonomy" => "property_state",
-                    "description" => "",
-                    "parent" => $country->term_id ?? 0,
-                    "count" => 0,
-                ]);
-
-                // $option = '_houzez_property_state_' . $state->term_id;
-                // $parent_key = "parent_country";
-                // $parent_value = $country->slug;
-
-                // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
-                //     'option' => $option,
-                //     'parent_key' => $parent_key,
-                //     'parent_value' => $parent_value,
-                // ]);
-
-                // Log::info($response->body());
+                $state = new State();
+                $state->country_id = $country->id;
+                $state->name = $state_name;
+                $state->save();
             }
 
-            $city = Term::where("name", $city_name)->first();
-            $city_taxonomy = TermTaxonomy::where('term_id', $city?->term_id)->first();
-
-            if($city && $city_taxonomy && $state->term_id == $city->parent){
-                $city = false;
-            }
-
+            // $city = City::where('name', $city_name)
+            //         ->whereHas("state", function($q) use ($state_name) {
+            //             $q->where("name", $state_name);
+            //         })->first();
+        
+            $city = City::where('name', $city_name)
+                    ->where('state_id', $state->id)->first();
+            
             if(!$city){
-                $city = Term::create([
-                    "name" => $city_name,
-                    "slug" => Str::slug($city_name),
-                    "term_group" => 0,
-                ]);
-
-                $city_taxonomy = TermTaxonomy::create([
-                    "term_id" => $city->term_id,
-                    "taxonomy" => "property_city",
-                    "description" => "",
-                    "parent" => $state->term_id ?? 0,
-                    "count" => 0,
-                ]);
-
-                // $option = '_houzez_property_city_' . $city->term_id;
-                // $parent_key = "parent_state";
-                // $parent_value = $state->slug;
-
-                // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
-                //     'option' => $option,
-                //     'parent_key' => $parent_key,
-                //     'parent_value' => $parent_value,
-                // ]);
-
-                // Log::info($response->body());
+                $city = new City();
+                $city->state_id = $state->id;
+                $city->name = $city_name;
+                $city->save();
             }
 
-
-            $area = Term::where("name", $area_name)->first();
-            $area_taxonomy = TermTaxonomy::where('term_id', $area?->term_id)->first();
-
-            if($area && $area_taxonomy && $city->term_id == $area->parent){
-                $area = false;
-            }
-
+            $area = Area::where('name', $area_name)
+                    ->where('city_id', $city->id)->first();
+            
             if(!$area){
-                $area = Term::create([
-                    "name" => $area_name,
-                    "slug" => Str::slug($area_name),
-                    "term_group" => 0,
-                ]);
-
-                $area_taxonomy = TermTaxonomy::create([
-                    "term_id" => $area->term_id,
-                    "taxonomy" => "property_area",
-                    "description" => "",
-                    "parent" => $area->term_id ?? 0,
-                    "count" => 0,
-                ]);
-
-                // $option = '_houzez_property_area_' . $area->term_id;
-                // $parent_key = "parent_city";
-                // $parent_value = $city->slug;
-
-                // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
-                //     'option' => $option,
-                //     'parent_key' => $parent_key,
-                //     'parent_value' => $parent_value,
-                // ]);
-
-                // Log::info($response->body());
-
+                $area = new Area();
+                $area->city_id = $city->id;
+                $area->name = $area_name;
+                $area->save();
             }
+
+            // // check country
+            // $country = Term::where("name", $country_name)->first();
+            // $country_taxonomy = TermTaxonomy::where('term_id', $country?->term_id)->first();
+
+            // if(!$country){
+            //     $country = Term::create([
+            //         "name" => $country_name,
+            //         "slug" => Str::slug($country_name),
+            //         "term_group" => 0,
+            //     ]);
+
+            //     $country_taxonomy = TermTaxonomy::create([
+            //         "term_id" => $country->term_id,
+            //         "taxonomy" => "property_country",
+            //         "description" => "",
+            //         "parent" => 0,
+            //         "count" => 0,
+            //     ]);
+            // }
+
+
+            // $state = Term::where("name", $state_name)->first();
+
+            // if(!$state){
+            //     $state = Term::create([
+            //         "name" => $state_name,
+            //         "slug" => Str::slug($state_name),
+            //         "term_group" => 0,
+            //     ]);
+
+            //     $state_taxonomy = TermTaxonomy::create([
+            //         "term_id" => $state->term_id,
+            //         "taxonomy" => "property_state",
+            //         "description" => "",
+            //         "parent" => 0,
+            //         "count" => 0,
+            //     ]);
+
+            //     // $option = '_houzez_property_state_' . $state->term_id;
+            //     // $parent_key = "parent_country";
+            //     // $parent_value = $country->slug;
+
+            //     // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
+            //     //     'option' => $option,
+            //     //     'parent_key' => $parent_key,
+            //     //     'parent_value' => $parent_value,
+            //     // ]);
+
+            //     // Log::info($response->body());
+            // }
+
+            // $city = Term::where("name", $city_name)->first();
+            // $city_taxonomy = TermTaxonomy::where('term_id', $city?->term_id)->first();
+
+            // if($city && $city->name != $state_name){
+            //     $city = false;
+            // }
+
+            // if(!$city){
+            //     $city = Term::create([
+            //         "name" => $city_name,
+            //         "slug" => Str::slug($city_name),
+            //         "term_group" => 0,
+            //     ]);
+
+            //     $city_taxonomy = TermTaxonomy::create([
+            //         "term_id" => $city->term_id,
+            //         "taxonomy" => "property_city",
+            //         "description" => "",
+            //         "parent" => $state->term_id ?? 0,
+            //         "count" => 0,
+            //     ]);
+
+            //     // $option = '_houzez_property_city_' . $city->term_id;
+            //     // $parent_key = "parent_state";
+            //     // $parent_value = $state->slug;
+
+            //     // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
+            //     //     'option' => $option,
+            //     //     'parent_key' => $parent_key,
+            //     //     'parent_value' => $parent_value,
+            //     // ]);
+
+            //     // Log::info($response->body());
+            // }
+
+
+            // $area = Term::where("name", $area_name)->first();
+            // $area_taxonomy = TermTaxonomy::where('term_id', $area?->term_id)->first();
+
+            // if($area && $area_taxonomy && $city->term_id == $area->parent){
+            //     $area = false;
+            // }
+
+            // if(!$area){
+            //     $area = Term::create([
+            //         "name" => $area_name,
+            //         "slug" => Str::slug($area_name),
+            //         "term_group" => 0,
+            //     ]);
+
+            //     $area_taxonomy = TermTaxonomy::create([
+            //         "term_id" => $area->term_id,
+            //         "taxonomy" => "property_area",
+            //         "description" => "",
+            //         "parent" => $area->term_id ?? 0,
+            //         "count" => 0,
+            //     ]);
+
+            //     // $option = '_houzez_property_area_' . $area->term_id;
+            //     // $parent_key = "parent_city";
+            //     // $parent_value = $city->slug;
+
+            //     // $response = Http::get('http://ant.test/wp-json/laravel/v1/update-option', [
+            //     //     'option' => $option,
+            //     //     'parent_key' => $parent_key,
+            //     //     'parent_value' => $parent_value,
+            //     // ]);
+
+            //     // Log::info($response->body());
+
+            // }
 
             $total_successful++;
         }
