@@ -98,10 +98,10 @@ class ContactCsvProcess implements ShouldQueue
             //         ->whereHas("state", function($q) use ($state_name) {
             //             $q->where("name", $state_name);
             //         })->first();
-        
+
             $city = City::where('name', $city_name)
                     ->where('state_id', $state->id)->first();
-            
+
             if(!$city){
                 $city = new City();
                 $city->state_id = $state->id;
@@ -111,7 +111,7 @@ class ContactCsvProcess implements ShouldQueue
 
             $area = Area::where('name', $area_name)
                     ->where('city_id', $city->id)->first();
-            
+
             if(!$area){
                 $area = new Area();
                 $area->city_id = $city->id;
