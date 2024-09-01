@@ -19,8 +19,7 @@ class Term extends Model
         "name",
         "slug",
         "term_group",
-        "lara_parent_id",
-        "type"
+        "parent_slug",
     ];
 
 }

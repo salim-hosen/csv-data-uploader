@@ -67,12 +67,13 @@ Route::get("state", function(){
         $states = State::all();
         foreach ($states as $state) {
 
+            $country = Country::find($state->country_id);
+
             $term = Term::create([
                 "name" => $state->name,
                 "slug" => Str::slug($state->name),
                 "term_group" => 0,
-                "lara_parent_id" => $state->country_id,
-                "type" => "state"
+                "parent_slug" => Str::slug($country->name)
             ]);
 
             $country_taxonomy = TermTaxonomy::create([
@@ -102,12 +103,13 @@ Route::get("city", function(){
         $cities = City::all();
         foreach ($cities as $city) {
 
+            $state = State::find($city->state_id);
+
             $term = Term::create([
                 "name" => $city->name,
                 "slug" => Str::slug($city->name),
                 "term_group" => 0,
-                "lara_parent_id" => $city->state_id,
-                "type" => "city"
+                "parent_slug" => Str::slug($state->name)
             ]);
 
             $country_taxonomy = TermTaxonomy::create([
@@ -142,12 +144,13 @@ Route::get("area", function(){
         foreach ($chunks as $chunk) {
             foreach ($chunk as $area) {
 
+                $city = City::find($area->city_id);
+
                 $term = Term::create([
                     "name" => $area->name,
                     "slug" => Str::slug($area->name),
                     "term_group" => 0,
-                    "lara_parent_id" => $area->city_id,
-                    "type" => "area"
+                    "parent_slug" => Str::slug($city->name)
                 ]);
 
                 $country_taxonomy = TermTaxonomy::create([
